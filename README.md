@@ -1,4 +1,4 @@
-# LongTermTimeLapse
+# Long Term Time-lapse
 [![License](https://img.shields.io/badge/license-LGPL--2.1-blue.svg)](https://licenses.nuget.org/LGPL-2.1-only)
 
 오랜 기간동안 띄엄띄엄 가끔씩 같은 장소를 찍은 사진들을 Time-lapse로 만들어주는 프로그램입니다.
