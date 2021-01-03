@@ -62,8 +62,8 @@ namespace LongTermTimeLapse
             return frame;
         }
 
-        public Rect TotalRect { get => Get<Rect>(); internal set => Set(value); }
-        public Rect ValidRect { get => Get<Rect>(); private set { if (Set(value) && !value.IsEmpty) UpdatedValidRect = true; } }
+        public Rect TotalRect { get => Get(Rect.Empty); internal set => Set(value); }
+        public Rect ValidRect { get => Get(Rect.Empty); private set { if (Set(value) && !value.IsEmpty) UpdatedValidRect = true; } }
         public bool UpdatedValidRect { get => Get(false); private set => Set(value); }
 
         public bool IsAdjusting { get => Get(false); private set => Set(value); }

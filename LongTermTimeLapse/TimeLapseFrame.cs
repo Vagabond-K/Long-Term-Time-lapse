@@ -35,7 +35,7 @@ namespace LongTermTimeLapse
         public bool IsBusy { get => Get(false); private set => Set(value); }
         public bool IsError { get => Get(false); private set => Set(value); }
 
-        public Rect Rect { get => Get<Rect>(); private set => Set(value); }
+        public Rect Rect { get => Get(Rect.Empty); private set => Set(value); }
         public System.Windows.Point[] Corners { get => Get<System.Windows.Point[]>(); private set => Set(value); }
         public System.Drawing.Size OriginalSize { get => Get<System.Drawing.Size>(); private set => Set(value); }
 
