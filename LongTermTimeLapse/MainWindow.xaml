@@ -1,0 +1,559 @@
+﻿<vk:ThemeWindow 
+    x:Class="LongTermTimeLapse.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vk="http://schemas.vagabond-k.com/winfx/2016/xaml"
+    xmlns:local="clr-namespace:LongTermTimeLapse"
+    mc:Ignorable="d"
+    Title="Long Term Time-lapse" 
+    Width="1280"
+    Height="720"
+    MinWidth="640"
+    MinHeight="480"
+    Icon="Images/icon.ico"
+    Background="Transparent"
+    d:DataContext="{d:DesignInstance Type={x:Type local:MainViewModel}, IsDesignTimeCreatable=True}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Viewbox Margin="20" x:Name="Viewbox">
+            <Grid>
+                <Grid x:Name="Viewport" Width="{Binding TimeLapse.TotalRect.Width}" Height="{Binding TimeLapse.TotalRect.Height}">
+                    <Grid.OpacityMask>
+                        <VisualBrush Stretch="None" AlignmentX="Left" AlignmentY="Top">
+                            <VisualBrush.Visual>
+                                <Canvas>
+                                    <Rectangle Fill="Red" Opacity="0.3" Width="{Binding TimeLapse.TotalRect.Width}" Height="{Binding TimeLapse.TotalRect.Height}"/>
+                                    <Rectangle Fill="Red" 
+                                    Canvas.Left="{Binding TimeLapse.ValidRect.X}"
+                                    Canvas.Top="{Binding TimeLapse.ValidRect.Y}"
+                                    Width="{Binding TimeLapse.ValidRect.Width}"
+                                    Height="{Binding TimeLapse.ValidRect.Height}">
+                                        <Rectangle.RenderTransform>
+                                            <TranslateTransform X="{Binding TimeLapse.CurrentFrame.Rect.X, Converter={StaticResource NegativeConverter}}" Y="{Binding TimeLapse.CurrentFrame.Rect.Y, Converter={StaticResource NegativeConverter}}"/>
+                                        </Rectangle.RenderTransform>
+                                    </Rectangle>
+                                    <Rectangle Fill="Red" Width="{Binding TimeLapse.TotalRect.Width}" Height="{Binding TimeLapse.TotalRect.Height}" Visibility="{Binding TimeLapse.UpdatedValidRect, Converter={StaticResource BooleanToVisibilityInvertConverter}}"/>
+                                </Canvas>
+                            </VisualBrush.Visual>
+                        </VisualBrush>
+                    </Grid.OpacityMask>
+                    <Canvas RenderTransformOrigin="0.5,0.5">
+                        <Canvas.RenderTransform>
+                            <TranslateTransform X="{Binding TimeLapse.TotalRect.X, Converter={StaticResource NegativeConverter}}" Y="{Binding TimeLapse.TotalRect.Y, Converter={StaticResource NegativeConverter}}"/>
+                        </Canvas.RenderTransform>
+                        <Image DataContext="{Binding TimeLapse.CurrentFrame}" Source="{Binding Image}"
+                            Canvas.Left="{Binding Rect.X}"
+                            Canvas.Top="{Binding Rect.Y}"
+                            Width="{Binding Rect.Width}"
+                            Height="{Binding Rect.Height}"/>
+                    </Canvas>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding TimeLapse.Frames}" RenderTransformOrigin="0.5,0.5">
+                    <ItemsControl.RenderTransform>
+                        <TranslateTransform X="{Binding TimeLapse.TotalRect.X, Converter={StaticResource NegativeConverter}}" Y="{Binding TimeLapse.TotalRect.Y, Converter={StaticResource NegativeConverter}}"/>
+                    </ItemsControl.RenderTransform>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="{x:Type ContentPresenter}">
+                            <Setter Property="Canvas.Left" Value="{Binding Rect.X}"/>
+                            <Setter Property="Canvas.Top" Value="{Binding Rect.Y}"/>
+                            <Setter Property="Width" Value="{Binding Rect.Width}"/>
+                            <Setter Property="Height" Value="{Binding Rect.Height}"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:TimeLapseFrame}">
+                            <Path Stroke="#80FF0000" StrokeThickness="{Binding ElementName=ValidRectangle, Path=StrokeThickness}" StrokeLineJoin="Round">
+                                <Path.Data>
+                                    <MultiBinding Converter="{StaticResource FramePathDataConverter}">
+                                        <Binding Path="Rect"/>
+                                        <Binding Path="Corners"/>
+                                    </MultiBinding>
+                                </Path.Data>
+                            </Path>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Canvas RenderTransformOrigin="0.5,0.5" Visibility="{Binding TimeLapse.ValidRect, Converter={StaticResource NotNullToVisibilityConverter}}">
+                    <Canvas.RenderTransform>
+                        <TranslateTransform X="{Binding TimeLapse.TotalRect.X, Converter={StaticResource NegativeConverter}}" Y="{Binding TimeLapse.TotalRect.Y, Converter={StaticResource NegativeConverter}}"/>
+                    </Canvas.RenderTransform>
+                    <Rectangle 
+                        x:Name="ValidRectangle"
+                        Stroke="Lime" 
+                        Canvas.Left="{Binding TimeLapse.ValidRect.X}"
+                        Canvas.Top="{Binding TimeLapse.ValidRect.Y}"
+                        Width="{Binding TimeLapse.ValidRect.Width}"
+                        Height="{Binding TimeLapse.ValidRect.Height}" StrokeLineJoin="Round">
+                        <Rectangle.StrokeThickness>
+                            <MultiBinding Converter="{StaticResource StrokeThicknessInViewBoxConverter}">
+                                <Binding ElementName="Viewbox" Path="ActualWidth"/>
+                                <Binding ElementName="Viewbox" Path="ActualHeight"/>
+                                <Binding ElementName="Viewport" Path="ActualWidth"/>
+                                <Binding ElementName="Viewport" Path="ActualHeight"/>
+                            </MultiBinding>
+                        </Rectangle.StrokeThickness>
+                    </Rectangle>
+                </Canvas>
+            </Grid>
+        </Viewbox>
+
+
+        <Border Background="#FF222222" 
+                DataContext="{Binding TimeLapse}"
+                Visibility="{Binding IsAdjusting, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Hidden}" 
+                IsHitTestVisible="False"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" CornerRadius="5" BorderBrush="Gray" BorderThickness="1">
+            <Border.BitmapEffect>
+                <DropShadowBitmapEffect Direction="270" />
+            </Border.BitmapEffect>
+            <StackPanel VerticalAlignment="Center" Margin="10">
+                <ProgressBar Height="15" Width="500" Minimum="0" Maximum="{Binding Frames.Count}" Value="{Binding AdjustComplated, Mode=OneWay}" IsIndeterminate="{Binding IsOptimizing}"/>
+                <Label Content="{Binding AdjustProcessMessage}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Border Background="#FF222222" 
+                DataContext="{Binding VideoExporter}"
+                Visibility="{Binding IsExporting, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Hidden}"
+                IsHitTestVisible="False"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" CornerRadius="5" BorderBrush="Gray" BorderThickness="1">
+            <Border.BitmapEffect>
+                <DropShadowBitmapEffect Direction="270" />
+            </Border.BitmapEffect>
+            <StackPanel VerticalAlignment="Center" Margin="10">
+                <ProgressBar Height="15" Width="500" Minimum="0" Maximum="1" Value="{Binding Processed, Mode=OneWay}"/>
+                <Label Content="동영상 파일로 내보내는 중..." HorizontalAlignment="Center" Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <Grid VerticalAlignment="Top" Margin="6" IsEnabled="{Binding IsBusy, Converter={StaticResource NegationConverter}}">
+            <FrameworkElement.Resources>
+                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="Padding" Value="6"/>
+                    <Setter Property="Focusable" Value="False"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+                    <Setter Property="FontSize" Value="16"/>
+                </Style>
+            </FrameworkElement.Resources>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="6"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Content="&#xED25;" Command="{Binding ImportImagesCommand}" Margin="0,0,1,0"/>
+            <Button Grid.Column="1" Content="&#xEA35;" Command="{Binding ExportVideoCommand}" Margin="0,0,1,0"/>
+            <Button Grid.Column="3" Content="&#xE81E;" Command="{Binding AdjustAllCommand}"/>
+            <Button Grid.Column="5" Content="&#xF5B0;" Margin="0,0,1,0" Command="{Binding PlayCommand}" IsEnabled="{Binding IsPlaying, Converter={StaticResource NegationConverter}}"/>
+            <Button Grid.Column="6" Content="&#xEDB4;" Command="{Binding PauseCommand}" IsEnabled="{Binding IsPlaying}"/>
+        </Grid>
+
+        <ListBox x:Name="Thumnails" Grid.Row="1" ItemsSource="{Binding TimeLapse.Frames}" 
+                    Height="117"
+                    SelectedItem="{Binding TimeLapse.CurrentFrame}" ScrollViewer.HorizontalScrollBarVisibility="Visible" Background="#80000000">
+            <ListBox.Style>
+                <Style TargetType="{x:Type ListBox}">
+                    <Setter Property="SnapsToDevicePixels" Value="true" />
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Background" Value="#FF333333" />
+                    <Setter Property="BorderBrush" Value="{x:Null}"/>
+                    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+                    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+                    <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type ListBox}">
+                                <Grid>
+                                    <Border x:Name="Border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" />
+                                    <ScrollViewer Focusable="false" Background="{x:Null}" CanContentScroll="False">
+                                        <StackPanel IsItemsHost="true" Orientation="Horizontal" Margin="5"/>
+                                    </ScrollViewer>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.Style>
+            <ListBox.ItemContainerStyle>
+                <Style d:IsControlPart="True" TargetType="{x:Type ListBoxItem}">
+                    <Setter Property="SnapsToDevicePixels" Value="true" />
+                    <Setter Property="OverridesDefaultStyle" Value="true" />
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                                <ControlTemplate.Resources>
+                                    <Storyboard x:Key="HoverOn">
+
+                                        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverRectangle" Storyboard.TargetProperty="(UIElement.Opacity)">
+                                            <SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="0.5"/>
+                                        </DoubleAnimationUsingKeyFrames>
+
+                                    </Storyboard>
+                                    <Storyboard x:Key="HoverOff">
+
+                                        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="HoverRectangle" Storyboard.TargetProperty="(UIElement.Opacity)">
+                                            <SplineDoubleKeyFrame KeyTime="00:00:00.4000000" Value="0"/>
+                                        </DoubleAnimationUsingKeyFrames>
+
+                                    </Storyboard>
+                                    <Storyboard x:Key="SelectedOn">
+
+                                        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectedRectangle" Storyboard.TargetProperty="(UIElement.Opacity)">
+                                            <SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="1"/>
+                                        </DoubleAnimationUsingKeyFrames>
+
+                                    </Storyboard>
+                                    <Storyboard x:Key="SelectedOff">
+
+                                        <DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="SelectedRectangle" Storyboard.TargetProperty="(UIElement.Opacity)">
+                                            <SplineDoubleKeyFrame KeyTime="00:00:00.4000000" Value="0"/>
+                                        </DoubleAnimationUsingKeyFrames>
+
+                                    </Storyboard>
+                                    <Storyboard x:Key="FocussedOn">
+                                        <!--<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="FocusVisualElement" Storyboard.TargetProperty="(UIElement.Opacity)">
+                                            <SplineDoubleKeyFrame KeyTime="00:00:00.1000000" Value="1"/>
+                                        </DoubleAnimationUsingKeyFrames>-->
+                                    </Storyboard>
+                                    <Storyboard x:Key="FocussedOff">
+                                        <!--<DoubleAnimationUsingKeyFrames BeginTime="00:00:00" Storyboard.TargetName="FocusVisualElement" Storyboard.TargetProperty="(UIElement.Opacity)">
+                                            <SplineDoubleKeyFrame KeyTime="00:00:00.3000000" Value="0"/>
+                                        </DoubleAnimationUsingKeyFrames>-->
+                                    </Storyboard>
+                                </ControlTemplate.Resources>
+                                <Grid SnapsToDevicePixels="true" Background="Transparent">
+                                    <Rectangle x:Name="Background" IsHitTestVisible="False" Fill="{TemplateBinding Background}" RadiusX="1" RadiusY="1"/>
+                                    <Rectangle x:Name="HoverRectangle" IsHitTestVisible="False" Opacity="0" Fill="#80FFFFFF" RadiusX="1" RadiusY="1"/>
+                                    <Rectangle x:Name="SelectedRectangle" IsHitTestVisible="False" Opacity="0" Fill="#80FFFFFF" Stroke="Yellow" StrokeThickness="2" RadiusX="1" RadiusY="1"/>
+                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Margin="5" x:Name="contentPresenter" />
+                                    <Rectangle x:Name="FocusVisualElement" Stroke="#FF595959" StrokeThickness="1" RadiusX="1" RadiusY="1" Opacity="0"/>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsFocused" Value="True">
+                                        <Trigger.ExitActions>
+                                            <BeginStoryboard Storyboard="{StaticResource FocussedOff}" x:Name="FocussedOff_BeginStoryboard"/>
+                                        </Trigger.ExitActions>
+                                        <Trigger.EnterActions>
+                                            <BeginStoryboard Storyboard="{StaticResource FocussedOn}" x:Name="FocussedOn_BeginStoryboard"/>
+                                        </Trigger.EnterActions>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="true">
+
+                                        <Trigger.ExitActions>
+                                            <BeginStoryboard x:Name="SelectedOff_BeginStoryboard" Storyboard="{StaticResource SelectedOff}"/>
+                                        </Trigger.ExitActions>
+                                        <Trigger.EnterActions>
+                                            <BeginStoryboard x:Name="SelectedOn_BeginStoryboard" Storyboard="{StaticResource SelectedOn}"/>
+                                        </Trigger.EnterActions>
+
+                                    </Trigger>
+                                    <MultiTrigger>
+                                        <MultiTrigger.Conditions>
+                                            <Condition Property="IsMouseOver" Value="True" />
+                                            <Condition Property="Selector.IsSelected" Value="False" />
+                                        </MultiTrigger.Conditions>
+
+                                        <MultiTrigger.EnterActions>
+                                            <BeginStoryboard Storyboard="{StaticResource HoverOn}"/>
+                                        </MultiTrigger.EnterActions>
+                                        <MultiTrigger.ExitActions>
+                                            <BeginStoryboard x:Name="HoverOff_BeginStoryboard" Storyboard="{StaticResource HoverOff}"/>
+                                        </MultiTrigger.ExitActions>
+
+                                    </MultiTrigger>
+                                    <MultiTrigger>
+                                        <MultiTrigger.Conditions>
+                                            <Condition Property="Selector.IsSelected" Value="True" />
+                                            <Condition Property="IsMouseOver" Value="True" />
+                                        </MultiTrigger.Conditions>
+
+                                    </MultiTrigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Border Background="#20FFFFFF" Height="80">
+                            <Grid>
+                                <Image Source="{Binding ThumbnailImage}"/>
+                                <Rectangle Width="142" Visibility="{Binding ThumbnailImage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                <Rectangle StrokeThickness="1" Stroke="#80FFFFFF"/>
+                                <Canvas Width="60" Height="60" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <FrameworkElement.Resources>
+                                        <Storyboard x:Key="progress">
+                                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="rotation" Storyboard.TargetProperty="Angle" RepeatBehavior="Forever">
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.00" Value="0"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.02" Value="15"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.04" Value="30"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.06" Value="45"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="60"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.10" Value="75"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.12" Value="90"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.14" Value="105"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.16" Value="120"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.18" Value="135"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.20" Value="150"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.22" Value="165"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.24" Value="180"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.26" Value="195"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.28" Value="210"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.30" Value="225"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.32" Value="240"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.34" Value="255"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.36" Value="270"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.38" Value="285"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.40" Value="300"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.42" Value="315"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.44" Value="330"/>
+                                                <DiscreteDoubleKeyFrame KeyTime="0:0:0.46" Value="345"/>
+                                            </DoubleAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </FrameworkElement.Resources>
+                                    <FrameworkElement.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard Storyboard="{StaticResource progress}"/>
+                                        </EventTrigger>
+                                    </FrameworkElement.Triggers>
+                                    <Canvas>
+                                        <Canvas.CacheMode>
+                                            <BitmapCache/>
+                                        </Canvas.CacheMode>
+                                        <Path Fill="#80808080" StrokeThickness="0.2" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 29.500006 0.00413787 a 30.000001 30.000001 0 0 0 -6.780979 0.89296875 l 2.071191 7.72872708 a 22 22 0 0 1 4.70979 -0.6201172 z m 0.999942 5.1676e-4 V 8.0057165 a 22 22 0 0 1 4.709787 0.6201172 L 37.280409 0.89710662 A 30.000001 30.000001 0 0 0 30.499948 0.00465463 Z M 21.753194 1.1560056 a 30.000001 30.000001 0 0 0 -6.31796 2.6168946 l 4.000789 6.9292928 a 22 22 0 0 1 4.388362 -1.8174602 z m 16.493566 0 -2.071192 7.7287272 A 22 22 0 0 1 40.563931 10.70271 L 44.564719 3.7729002 A 30.000001 30.000001 0 0 0 38.24676 1.1560056 Z M 14.569136 4.2731281 A 30.000001 30.000001 0 0 0 9.1431112 8.4361815 l 5.6580528 5.6580525 a 22 22 0 0 1 3.768762 -2.891813 z m 30.861681 0 -4.000788 6.9292929 a 22 22 0 0 1 3.768762 2.891813 L 50.856842 8.4361815 A 30.000001 30.000001 0 0 0 45.430817 4.2731281 Z M 8.4361777 9.143115 A 30.000001 30.000001 0 0 0 4.2731243 14.56914 l 6.9292927 4.00079 a 22 22 0 0 1 2.891813 -3.768762 z m 43.1276013 0 -5.658054 5.658053 a 22 22 0 0 1 2.891814 3.768762 l 6.92929 -4.00079 A 30.000001 30.000001 0 0 0 51.563779 9.143115 Z M 3.7728964 15.435238 a 30.000001 30.000001 0 0 0 -2.6168946 6.31796 l 7.7287272 2.071191 a 22 22 0 0 1 1.817977 -4.388879 z m 52.4541636 0 -6.929292 4.000789 a 22 22 0 0 1 1.81746 4.388362 l 7.728723 -2.071191 A 30.000001 30.000001 0 0 0 56.22706 15.435238 Z M 0.89710286 22.719547 A 30.000001 30.000001 0 0 0 0.00465088 29.50001 H 8.0057127 a 22 22 0 0 1 0.6201172 -4.709271 z m 58.20575114 0 -7.728728 2.071192 a 22 22 0 0 1 0.620117 4.709271 h 8.001579 A 30.000001 30.000001 0 0 0 59.102854 22.719547 Z M 0.00413411 30.499952 a 30.000001 30.000001 0 0 0 0.89296875 6.78098 l 7.72872704 -2.07119 a 22 22 0 0 1 -0.6201172 -4.70979 z m 51.99010589 0 a 22 22 0 0 1 -0.620117 4.709787 l 7.728728 2.070674 a 30.000001 30.000001 0 0 0 0.892453 -6.780464 z m -43.109511 5.67562 -7.7287272 2.071192 a 30.000001 30.000001 0 0 0 2.6168946 6.317959 L 10.702706 40.563935 A 22 22 0 0 1 8.884729 36.175572 Z m 42.230499 0 a 22 22 0 0 1 -1.817981 4.388363 l 6.929811 4.000788 a 30.000001 30.000001 0 0 0 2.616893 -6.317959 z m -39.912811 5.254461 -6.9298095 4.000788 a 30.000001 30.000001 0 0 0 4.1640869 5.425511 L 14.09423 45.198795 a 22 22 0 0 1 -2.891813 -3.768762 z m 37.59512 0 a 22 22 0 0 1 -2.891814 3.768762 l 5.658054 5.658051 a 30.000001 30.000001 0 0 0 4.163052 -5.426025 z m -33.996373 4.475694 -5.6580528 5.658054 a 30.000001 30.000001 0 0 0 5.4260248 4.163052 l 4.00079 -6.929292 a 22 22 0 0 1 -3.768762 -2.891814 z m 30.397627 0 a 22 22 0 0 1 -3.76876 2.891814 l 4.000789 6.92981 a 30.000001 30.000001 0 0 0 5.425508 -4.164086 z m -25.763285 3.391524 -4.000272 6.929811 a 30.000001 30.000001 0 0 0 6.31796 2.616893 l 2.071191 -7.728723 a 22 22 0 0 1 -4.388879 -1.817981 z m 21.128425 5.29e-4 a 22 22 0 0 1 -4.388363 1.817458 l 2.070674 7.728725 a 30.000001 30.000001 0 0 0 6.318477 -2.616893 z m -15.773196 2.076355 -2.071192 7.728728 a 30.000001 30.000001 0 0 0 6.780463 0.892453 v -8.001064 a 22 22 0 0 1 -4.709271 -0.620117 z m 10.418484 0 a 22 22 0 0 1 -4.709271 0.620117 v 8.00158 a 30.000001 30.000001 0 0 0 6.780461 -0.892453 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                        </Path>
+                                    </Canvas>
+                                    <Canvas RenderTransformOrigin="0.5,0.5" Width="60" Height="60">
+                                        <Canvas.CacheMode>
+                                            <BitmapCache/>
+                                        </Canvas.CacheMode>
+                                        <Canvas.RenderTransform>
+                                            <RotateTransform x:Name="rotation"/>
+                                        </Canvas.RenderTransform>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.2">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 193.19141 136.72656 a 83.149605 83.149605 0 0 1 -6.8711 16.58594 l 26.19141 15.12109 a 113.38583 113.38583 0 0 0 9.89062 -23.8789 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="1">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 111.49609 0.015625 a 113.38583 113.38583 0 0 0 -25.628902 3.375 l 7.828124 29.210937 a 83.149605 83.149605 0 0 1 17.800778 -2.34375 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.95">
+                                            <Path.Data>
+                                                <PathGeometry Figures="M 82.216797 4.3691406 A 113.38583 113.38583 0 0 0 58.337891 14.259766 l 15.121093 26.189453 a 83.149605 83.149605 0 0 1 16.585938 -6.869141 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.9">
+                                            <Path.Data>
+                                                <PathGeometry Figures="M 55.064453 16.150391 A 113.38583 113.38583 0 0 0 34.556641 31.884766 L 55.941406 53.269531 A 83.149605 83.149605 0 0 1 70.185547 42.339844 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.85">
+                                            <Path.Data>
+                                                <PathGeometry Figures="M 31.884766 34.556641 A 113.38583 113.38583 0 0 0 16.150391 55.064453 L 42.339844 70.185547 A 83.149605 83.149605 0 0 1 53.269531 55.941406 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.8">
+                                            <Path.Data>
+                                                <PathGeometry Figures="M 14.259766 58.337891 A 113.38583 113.38583 0 0 0 4.3691406 82.216797 l 29.2109374 7.828125 a 83.149605 83.149605 0 0 1 6.871094 -16.587891 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.75">
+                                            <Path.Data>
+                                                <PathGeometry Figures="M 3.390625 85.869141 A 113.38583 113.38583 0 0 0 0.01757813 111.49609 H 30.257812 a 83.149605 83.149605 0 0 1 2.34375 -17.798824 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.7">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 0.015625 115.27539 a 113.38583 113.38583 0 0 0 3.375 25.62891 l 29.210937 -7.82813 a 83.149605 83.149605 0 0 1 -2.34375 -17.80078 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.65">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 33.580078 136.72656 -29.2109374 7.82813 a 113.38583 113.38583 0 0 0 9.8906254 23.8789 L 40.451172 153.3125 a 83.149605 83.149605 0 0 1 -6.871094 -16.58594 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.6">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 42.339844 156.58594 -26.191406 15.12109 a 113.38583 113.38583 0 0 0 15.738281 20.50586 L 53.269531 170.83008 A 83.149605 83.149605 0 0 1 42.339844 156.58594 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.55">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 55.941406 173.50195 -21.384765 21.38477 a 113.38583 113.38583 0 0 0 20.507812 15.73437 L 70.185547 184.43164 A 83.149605 83.149605 0 0 1 55.941406 173.50195 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.5">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 73.457031 186.32031 -15.11914 26.19141 a 113.38583 113.38583 0 0 0 23.878906 9.89062 l 7.828125 -29.21093 a 83.149605 83.149605 0 0 1 -16.587891 -6.8711 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.45">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 93.697266 194.16996 -7.828125 29.21094 a 113.38583 113.38583 0 0 0 25.626949 3.37305 v -30.24024 a 83.149605 83.149605 0 0 1 -17.798824 -2.34375 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.4">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 133.07422 194.16996 a 83.149605 83.149605 0 0 1 -17.79883 2.34375 v 30.24219 a 113.38583 113.38583 0 0 0 25.62695 -3.37305 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.35">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 153.3125 186.32231 a 83.149605 83.149605 0 0 1 -16.58594 6.86914 l 7.82617 29.21093 a 113.38583 113.38583 0 0 0 23.88086 -9.89062 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.3">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 170.83008 173.50195 a 83.149605 83.149605 0 0 1 -14.24414 10.92969 l 15.12109 26.19141 a 113.38583 113.38583 0 0 0 20.50586 -15.73828 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.25">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 184.43164 156.58594 a 83.149605 83.149605 0 0 1 -10.92969 14.24414 l 21.38477 21.38476 a 113.38583 113.38583 0 0 0 15.73437 -20.50781 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.15">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 196.51367 115.27539 a 83.149605 83.149605 0 0 1 -2.34375 17.80078 l 29.21094 7.82617 a 113.38583 113.38583 0 0 0 3.37305 -25.62695 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.1">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 223.38086 85.869141 -29.21094 7.828125 a 83.149605 83.149605 0 0 1 2.34375 17.798824 h 30.24219 a 113.38583 113.38583 0 0 0 -3.375 -25.626949 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.05">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 212.51172 58.337891 -26.18945 15.121093 a 83.149605 83.149605 0 0 1 6.86914 16.585938 l 29.21093 -7.828125 a 113.38583 113.38583 0 0 0 -9.89062 -23.878906 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 194.88672 34.556641 -21.38477 21.384765 a 83.149605 83.149605 0 0 1 10.92969 14.244141 L 210.62109 55.064453 A 113.38583 113.38583 0 0 0 194.88672 34.556641 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 171.70703 16.150391 -15.12109 26.189453 a 83.149605 83.149605 0 0 1 14.24414 10.929687 L 192.21484 31.884766 A 113.38583 113.38583 0 0 0 171.70703 16.150391 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0">
+                                            <Path.Data>
+                                                <PathGeometry Figures="m 144.55469 4.3691406 -7.82813 29.2109374 a 83.149605 83.149605 0 0 1 16.58594 6.871094 l 15.12109 -26.191406 a 113.38583 113.38583 0 0 0 -23.8789 -9.8906254 z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                        <Path Fill="#FFFFFFFF" StrokeThickness="0.755906" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0">
+                                            <Path.Data>
+                                                <PathGeometry Figures="M 115.27539 0.0175781 V 30.257812 a 83.149605 83.149605 0 0 1 17.80078 2.34375 L 140.90234 3.390625 A 113.38583 113.38583 0 0 0 115.27539 0.0175781 Z" FillRule="NonZero"/>
+                                            </Path.Data>
+                                            <Path.RenderTransform>
+                                                <ScaleTransform ScaleX="0.26458333" ScaleY="0.26458333"/>
+                                            </Path.RenderTransform>
+                                        </Path>
+                                    </Canvas>
+                                </Canvas>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        
+    </Grid>
+</vk:ThemeWindow>
